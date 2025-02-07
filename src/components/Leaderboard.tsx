@@ -36,7 +36,9 @@ const Leaderboard = ({ walletAddress, socket }: any) => {
 
   const fetchLeaderboard = async () => {
     try {
-      const response = await fetch("http://localhost:3000/leaderboard");
+      const response = await fetch(
+        "https://abstract-backend.onrender.com/leaderboard"
+      );
       const data = await response.json();
       setLeaderboard(data);
     } catch (error) {
@@ -47,7 +49,7 @@ const Leaderboard = ({ walletAddress, socket }: any) => {
   const fetchUserStats = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/user/${walletAddress}`
+        `https://abstract-backend.onrender.com/user/${walletAddress}`
       );
       const data = await response.json();
       setUserStats(data);
