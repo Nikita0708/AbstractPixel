@@ -955,7 +955,7 @@ const PixelBoard: React.FC = () => {
       </HeroUINavbar>
 
       <section className="container mt-[50px]">
-        <h1 className="text-center">Make abstract great for a moment.</h1>
+        <h1 className="text-center">In Abstract We Trust</h1>
       </section>
 
       <div className="mt-[100px]">
