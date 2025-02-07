@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 
-const Dialog = ({ children, open, onOpenChange }) => {
+const Dialog = ({ children, open, onOpenChange }: any) => {
   const overlayRef = useRef(null);
 
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: any) => {
       if (e.key === "Escape") {
         onOpenChange(false);
       }
@@ -23,7 +23,7 @@ const Dialog = ({ children, open, onOpenChange }) => {
 
   if (!open) return null;
 
-  const handleOverlayClick = (e) => {
+  const handleOverlayClick = (e: any) => {
     if (e.target === overlayRef.current) {
       onOpenChange(false);
     }
@@ -40,7 +40,7 @@ const Dialog = ({ children, open, onOpenChange }) => {
   );
 };
 
-const DialogContent = ({ children, className = "" }) => {
+const DialogContent = ({ children, className = "" }: any) => {
   return (
     <div
       className={`bg-white rounded-lg shadow-lg w-full max-w-md mx-4 ${className}`}
@@ -50,11 +50,11 @@ const DialogContent = ({ children, className = "" }) => {
   );
 };
 
-const DialogHeader = ({ children }) => {
+const DialogHeader = ({ children }: any) => {
   return <div className="px-6 py-4 border-b border-gray-200">{children}</div>;
 };
 
-const DialogTitle = ({ children }) => {
+const DialogTitle = ({ children }: any) => {
   return <h2 className="text-xl font-semibold text-gray-900">{children}</h2>;
 };
 
