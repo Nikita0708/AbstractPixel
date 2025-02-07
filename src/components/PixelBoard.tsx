@@ -44,7 +44,7 @@ const CONTRACT_ABI = [
   "function withdrawFees() external",
 ];
 
-const socket = io("http://localhost:3000", {
+const socket = io("https://abstract-backend.onrender.com", {
   transports: ["websocket"],
   reconnectionAttempts: 5,
 });
@@ -138,7 +138,7 @@ const PixelBoard: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem("walletAddress") || "";
   });
-  const [chainId, setChainId] = useState<any>(null);
+  // const [chainId, setChainId] = useState<any>(null);
   const [txPending, setTxPending] = useState(false);
   const [provider, setProvider] = useState<any>(null);
   const [signer, setSigner] = useState<any>(null);
@@ -154,7 +154,7 @@ const PixelBoard: React.FC = () => {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const network = await provider.getNetwork();
-        setChainId(network.chainId);
+        // setChainId(network.chainId);
 
         // Check if we're on Abstract testnet
         if (network.chainId !== BigInt(11124)) {
@@ -193,15 +193,18 @@ const PixelBoard: React.FC = () => {
 
         // Register/update user in backend
         try {
-          const response = await fetch("http://localhost:3000/users", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              walletAddress: address,
-            }),
-          });
+          const response = await fetch(
+            "https://abstract-backend.onrender.com/users",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                walletAddress: address,
+              }),
+            }
+          );
 
           if (!response.ok) {
             throw new Error("Failed to register user");
@@ -256,7 +259,7 @@ const PixelBoard: React.FC = () => {
 
       // Register/update new account
       try {
-        await fetch("http://localhost:3000/users", {
+        await fetch("https://abstract-backend.onrender.com/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -358,7 +361,7 @@ const PixelBoard: React.FC = () => {
 
       const ethersProvider = new ethers.BrowserProvider(provider);
       const network = await ethersProvider.getNetwork();
-      setChainId(network.chainId);
+      // setChainId(network.chainId);
 
       if (network.chainId !== BigInt(11124)) {
         try {
@@ -396,15 +399,18 @@ const PixelBoard: React.FC = () => {
 
       // Register/update user in backend
       try {
-        const response = await fetch("http://localhost:3000/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            walletAddress: address,
-          }),
-        });
+        const response = await fetch(
+          "https://abstract-backend.onrender.com/users",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              walletAddress: address,
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to register user");
@@ -466,7 +472,7 @@ const PixelBoard: React.FC = () => {
   useEffect(() => {
     const fetchPixels = async () => {
       try {
-        const res = await fetch("http://localhost:3000/pixels");
+        const res = await fetch("https://abstract-backend.onrender.com/pixels");
         const data = await res.json();
         setPixels(data);
       } catch (error) {
@@ -832,18 +838,21 @@ const PixelBoard: React.FC = () => {
 
       // Update user statistics
       try {
-        const response = await fetch("http://localhost:3000/users/stats", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            walletAddress: userAddress,
-            pixelsPainted: selected.length,
-            transactionHash: receipt.hash,
-            fee: totalFee.toString(),
-          }),
-        });
+        const response = await fetch(
+          "https://abstract-backend.onrender.com/users/stats",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              walletAddress: userAddress,
+              pixelsPainted: selected.length,
+              transactionHash: receipt.hash,
+              fee: totalFee.toString(),
+            }),
+          }
+        );
 
         if (!response.ok) {
           console.error("Failed to update user statistics");

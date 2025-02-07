@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const WalletModal = ({ isOpen, onClose, onConnect }) => {
+const WalletModal = ({ isOpen, onClose, onConnect }: any) => {
   const wallets = [
     {
       name: "MetaMask",
