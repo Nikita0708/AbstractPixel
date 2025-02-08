@@ -1102,14 +1102,14 @@ const PixelBoard: React.FC = () => {
                       key="draw"
                       value="draw"
                       title="Draw"
-                      className="w-[200px]"
+                      className="w-[230px]"
                     />
                     <Tab key="navigate" value="navigate" title="Navigate" />
                   </Tabs>
                   <div className="flex flex-col gap-[7px]">
                     <Button
                       onPress={handleSelectionReset}
-                      className="w-[200px]"
+                      className="w-[230px]"
                       color="warning"
                     >
                       Reset Selection
@@ -1117,7 +1117,7 @@ const PixelBoard: React.FC = () => {
 
                     <Button
                       onPress={handlePositionReset}
-                      className="w-[200px]"
+                      className="w-[230px]"
                       color="secondary"
                     >
                       Reset Position
