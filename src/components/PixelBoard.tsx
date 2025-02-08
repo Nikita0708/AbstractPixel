@@ -29,7 +29,7 @@ import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
 
 import { siteConfig } from "@/config/site";
-import { TwitterIcon, DiscordIcon } from "@/components/icons";
+import { TwitterIcon } from "@/components/icons";
 import { useStatusNotification } from "./notifications/Notification";
 
 const CONTRACT_ADDRESS = "0x487C44911853d915A0385FF71cb23C17A02FdFd2";
@@ -989,9 +989,6 @@ const PixelBoard: React.FC = () => {
           <NavbarItem className="hidden sm:flex gap-2">
             <Link isExternal href={siteConfig.links.twitter} title="Twitter">
               <TwitterIcon className="text-default-500" />
-            </Link>
-            <Link isExternal href={siteConfig.links.discord} title="Discord">
-              <DiscordIcon className="text-default-500" />
             </Link>
           </NavbarItem>
           <NavbarItem>

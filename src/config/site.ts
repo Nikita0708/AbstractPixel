@@ -18,8 +18,6 @@ export const siteConfig = {
     },
   ],
   links: {
-    twitter: "https://twitter.com/hero_ui",
-    docs: "https://heroui.com",
-    discord: "https://discord.gg/9b6yyZKmH4",
+    twitter: "https://x.com/abs_pixel",
   },
 };
