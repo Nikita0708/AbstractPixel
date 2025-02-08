@@ -30,7 +30,6 @@ import clsx from "clsx";
 
 import { siteConfig } from "@/config/site";
 import { TwitterIcon, DiscordIcon } from "@/components/icons";
-import { Logo } from "@/components/icons";
 import { useStatusNotification } from "./notifications/Notification";
 
 const CONTRACT_ADDRESS = "0x487C44911853d915A0385FF71cb23C17A02FdFd2";
@@ -138,7 +137,7 @@ const PixelBoard: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem("walletAddress") || "";
   });
-  // const [chainId, setChainId] = useState<any>(null);
+  const [chainId, setChainId] = useState<any>(null);
   const [txPending, setTxPending] = useState(false);
   const [provider, setProvider] = useState<any>(null);
   const [signer, setSigner] = useState<any>(null);
@@ -154,7 +153,7 @@ const PixelBoard: React.FC = () => {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const network = await provider.getNetwork();
-        // setChainId(network.chainId);
+        setChainId(network.chainId);
 
         // Check if we're on Abstract testnet
         if (network.chainId !== BigInt(11124)) {
@@ -307,10 +306,13 @@ const PixelBoard: React.FC = () => {
   };
 
   const handleChainChanged = () => {
+    if (chainId !== "0x2B74") {
+      showNotification("Please switch to Abstract Testnet", "error");
+    }
     window.location.reload();
   };
 
-  const connectWallet = async (walletType: any) => {
+  const connectWallet = async (walletType: string) => {
     try {
       let provider;
 
@@ -359,45 +361,69 @@ const PixelBoard: React.FC = () => {
           throw new Error("Unsupported wallet type");
       }
 
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      const network = await ethersProvider.getNetwork();
-      // setChainId(network.chainId);
+      // Request account access
+      await provider.request({ method: "eth_requestAccounts" });
 
-      if (network.chainId !== BigInt(11124)) {
+      // Get current chain ID
+      const currentChainId = await provider.request({ method: "eth_chainId" });
+      setChainId(currentChainId);
+
+      // Check if we need to switch chains
+      if (currentChainId !== "0x2B74") {
+        // Abstract testnet
         try {
           await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0x2B74",
-                chainName: "Abstract Testnet",
-                nativeCurrency: {
-                  name: "ETH",
-                  symbol: "ETH",
-                  decimals: 18,
-                },
-                rpcUrls: ["https://api.testnet.abs.xyz"],
-                blockExplorerUrls: ["https://sepolia.abscan.org/"],
-              },
-            ],
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x2B74" }],
           });
-        } catch (error) {
-          console.error("Failed to add Abstract testnet:", error);
-          showNotification("Please switch to Abstract Testnet", "error");
-          return false;
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await provider.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x2B74",
+                  chainName: "Abstract Testnet",
+                  nativeCurrency: {
+                    name: "ETH",
+                    symbol: "ETH",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://api.testnet.abs.xyz"],
+                  blockExplorerUrls: ["https://sepolia.abscan.org/"],
+                },
+              ],
+            });
+          } else {
+            throw switchError;
+          }
         }
+
+        // Update chainId after switching
+        const newChainId = await provider.request({ method: "eth_chainId" });
+        setChainId(newChainId);
       }
 
+      const ethersProvider = new ethers.BrowserProvider(provider);
       const signer = await ethersProvider.getSigner();
+      const address = await signer.getAddress();
+
+      // Create contract instance
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CONTRACT_ABI,
         signer
       );
-      const address = await signer.getAddress();
-      setIsAdmin(address.toLowerCase() === FEE_RECIPIENT.toLowerCase());
 
-      // Register/update user in backend
+      // Set state
+      setProvider(ethersProvider);
+      setSigner(signer);
+      setContract(contract);
+      setWalletAddress(address);
+      setIsAdmin(address.toLowerCase() === FEE_RECIPIENT.toLowerCase());
+      localStorage.setItem("walletAddress", address);
+
+      // Register user
       try {
         const response = await fetch(
           "https://abstract-backend.onrender.com/users",
@@ -413,28 +439,25 @@ const PixelBoard: React.FC = () => {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to register user");
+          console.error("Failed to register user");
         }
       } catch (error) {
         console.error("Error registering user:", error);
       }
 
-      setProvider(ethersProvider);
-      setSigner(signer);
-      setContract(contract);
-      setWalletAddress(address);
-      localStorage.setItem("walletAddress", address);
-
       // Setup event listeners
       provider.on("accountsChanged", handleAccountsChanged);
-      provider.on("chainChanged", handleChainChanged);
+      provider.on("chainChanged", (newChainId: string) => {
+        setChainId(newChainId);
+        handleChainChanged();
+      });
 
       showNotification("Wallet connected successfully", "success");
       setIsWalletModalOpen(false);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to initialize wallet:", error);
-      showNotification("Failed to connect wallet", "error");
+      showNotification("Failed to connect wallet: " + error.message, "error");
       localStorage.removeItem("walletAddress");
       setIsAdmin(false);
       return false;
@@ -778,7 +801,7 @@ const PixelBoard: React.FC = () => {
         );
 
         if (clickedPixel && !selected.includes(clickedPixel._id)) {
-          if (!isAdmin && selected.length >= 3) return;
+          if (!isAdmin && selected.length >= 10) return;
           setSelected((prev) => [...prev, clickedPixel._id]);
         }
       }
@@ -799,18 +822,58 @@ const PixelBoard: React.FC = () => {
     if (selected.length === 0 || !contract || !signer || txPending) return;
 
     try {
+      // Convert chainId to lowercase hex string for consistent comparison
+      const currentChainId =
+        typeof chainId === "bigint"
+          ? "0x" + chainId.toString(16)
+          : (chainId || "").toLowerCase();
+
+      const targetChainId = "0x2b74"; // Abstract testnet in lowercase
+
+      console.log("Current chain ID:", currentChainId);
+      console.log("Target chain ID:", targetChainId);
+
+      if (currentChainId !== targetChainId) {
+        // Try to switch to Abstract testnet
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x2B74" }],
+          });
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x2B74",
+                  chainName: "Abstract Testnet",
+                  nativeCurrency: {
+                    name: "ETH",
+                    symbol: "ETH",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://api.testnet.abs.xyz"],
+                  blockExplorerUrls: ["https://sepolia.abscan.org/"],
+                },
+              ],
+            });
+          } else {
+            throw new Error("Failed to switch to Abstract Testnet");
+          }
+        }
+        return; // Exit after chain switch attempt
+      }
+
       setTxPending(true);
       showNotification("Preparing transaction...");
 
       const userAddress = await signer.getAddress();
-
-      // Calculate total fee based on number of pixels and user address
       const totalFee =
         userAddress.toLowerCase() === FEE_RECIPIENT.toLowerCase()
-          ? BigInt(0) // Free for fee recipient
-          : FIXED_FEE_PER_PIXEL * BigInt(selected.length); // Regular fee per pixel for others
+          ? BigInt(0)
+          : FIXED_FEE_PER_PIXEL * BigInt(selected.length);
 
-      // Create hash of pixels data
       const pixelsHash = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "string[]", "string"],
@@ -818,17 +881,14 @@ const PixelBoard: React.FC = () => {
         )
       );
 
-      // Send transaction with number of pixels
       const tx = await contract.paintPixels(pixelsHash, selected.length, {
         value: totalFee,
       });
+
       showNotification("Transaction pending...");
-
-      // Wait for transaction confirmation
       const receipt = await tx.wait();
-      showNotification("Transaction confirmed! Updating pixels...", "success");
 
-      // Send to backend with transaction proof
+      // Emit socket event for real-time updates
       socket.emit("paintPixels", {
         pixels: selected,
         color,
@@ -836,27 +896,20 @@ const PixelBoard: React.FC = () => {
         userAddress: userAddress,
       });
 
-      // Update user statistics
+      // Update user statistics in backend
       try {
-        const response = await fetch(
-          "https://abstract-backend.onrender.com/users/stats",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              walletAddress: userAddress,
-              pixelsPainted: selected.length,
-              transactionHash: receipt.hash,
-              fee: totalFee.toString(),
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          console.error("Failed to update user statistics");
-        }
+        await fetch("https://abstract-backend.onrender.com/users/stats", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            walletAddress: userAddress,
+            pixelsPainted: selected.length,
+            transactionHash: receipt.hash,
+            fee: totalFee.toString(),
+          }),
+        });
       } catch (error) {
         console.error("Error updating user statistics:", error);
         // Continue anyway as this isn't critical
@@ -877,7 +930,17 @@ const PixelBoard: React.FC = () => {
     } finally {
       setTxPending(false);
     }
-  }, [selected, color, contract, signer, txPending]);
+  }, [
+    selected,
+    color,
+    contract,
+    signer,
+    chainId,
+    txPending,
+    socket,
+    setPixels,
+    showNotification,
+  ]);
 
   const handleSelectionReset = useCallback(() => {
     setSelected([]);
@@ -898,8 +961,7 @@ const PixelBoard: React.FC = () => {
               color="foreground"
               href="/"
             >
-              <Logo />
-              <p className="font-bold text-inherit">APixel</p>
+              <img src="/abstract-logo.png" alt="logo" className="w-[80px]" />
             </Link>
           </NavbarBrand>
           <div className="hidden sm:flex gap-4 justify-start ml-2">
@@ -1083,7 +1145,7 @@ const PixelBoard: React.FC = () => {
                   : walletAddress?.toLowerCase() === FEE_RECIPIENT.toLowerCase()
                     ? "Paint (Free)"
                     : `Paint ${selected.length}
-                    ${isAdmin ? "" : "/3"} (${ethers.formatEther(
+                    ${isAdmin ? "" : "/10"} (${ethers.formatEther(
                       FIXED_FEE_PER_PIXEL * BigInt(selected.length)
                     )} ETH)`}
               </Button>
@@ -1113,7 +1175,7 @@ const PixelBoard: React.FC = () => {
           onConnect={connectWallet}
         />
       </div>
-      <div className="md:w-96">
+      <div className="md:w-96 mb-[100px]">
         <Leaderboard walletAddress={walletAddress} socket={socket} />
       </div>
     </div>
